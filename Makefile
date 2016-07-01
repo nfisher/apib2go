@@ -14,7 +14,7 @@ $(EXE): $(COVER)
 
 # Run vet, test, and display test coverage by function.
 $(COVER): $(SRC)
-	go vet -v
+	go vet
 	go test -v -covermode=count -coverprofile=$(COVER)
 	go tool cover -func=$(COVER)
 
