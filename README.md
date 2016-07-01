@@ -15,7 +15,7 @@
 ## Type Mapping
 
 | MSON    | Go            | Notes                               |
-| :=====: | :===========: | :=================================: |
+| ------- | ------------- | ----------------------------------- |
 | boolean | \*bool        |                                     |
 | string  | \*string      |                                     |
 | number  | \*string      | allow user to decide how to convert |
