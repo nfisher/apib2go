@@ -1,6 +1,7 @@
 # apib2go
 
 [![Build Status](https://travis-ci.org/nfisher/apib2go.svg?branch=master)](https://travis-ci.org/nfisher/apib2go)
+[![Coverage Status](https://coveralls.io/repos/github/nfisher/apib2go/badge.svg?branch=master)](https://coveralls.io/github/nfisher/apib2go?branch=master)
 
 ## Core Principles
 
