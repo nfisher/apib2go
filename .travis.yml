@@ -1,0 +1,13 @@
+sudo: false
+language: go
+go:
+  - 1.4
+  - 1.5
+  - 1.6
+  - tip
+install:
+  - go get -v golang.org/x/tools/cmd/cover
+  - go get -v golang.org/x/tools/cmd/vet
+script:
+  - make all
+  - $HOME/gopath/bin/goveralls -service=travis-ci -coverprofile=coverage.out

@@ -1,15 +1,16 @@
 # apib2go
 
-https://apiblueprint.org/documentation/mson/specification.html
+[![Build Status](https://travis-ci.org/nfisher/apib2go.svg?branch=master)](https://travis-ci.org/nfisher/apib2go)
 
-Core Principles
+## Core Principles
 
 - Optional is represented by pointer.
 - Required is represented by an instance. \*
 - Numbers are represented as strings to avoid issues with precision.
 - ${X}.apib becomes the package name (e.g. products.apib generates products/generated.go with a package name "products").
+- functions such as builders and other tooling can co-exist with the generated code as long as the user does not place it in the generated.go files.
 
-\* I'm not really a fan of required. It limits schema evolution (protobuf3 dropped it entirely) so it'll be the last thing I'll focus on.
+\* I'm not really a fan of required fields. It limits schema evolution (protobuf3 dropped it entirely) so it'll be the last thing I focus on.
 
 ## Type Mapping
 
@@ -73,3 +74,8 @@ p := &Produce {
   Name: apib.String("banana"),
 }
 ```
+
+## Reference Material
+
+https://apiblueprint.org/documentation/specification.html
+https://apiblueprint.org/documentation/mson/specification.html
