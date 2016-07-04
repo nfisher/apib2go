@@ -15,7 +15,7 @@
 
 ## Type Mapping
 
-| MSON    | Go            | Notes                               |
+| APIB    | Go            | Notes                               |
 | ------- | ------------- | ----------------------------------- |
 | boolean | \*bool        |                                     |
 | string  | \*string      |                                     |
@@ -26,7 +26,7 @@
 
 ## Example
 
-MSON
+APIB
 
 ```
 ## Data Structures
