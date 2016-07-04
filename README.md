@@ -78,5 +78,5 @@ p := &Produce {
 
 ## Reference Material
 
-https://apiblueprint.org/documentation/specification.html
-https://apiblueprint.org/documentation/mson/specification.html
+- https://apiblueprint.org/documentation/specification.html
+- https://apiblueprint.org/documentation/mson/specification.html
