@@ -40,7 +40,7 @@ func (l *Lexer) Emit(t ItemType) {
 }
 
 func (l *Lexer) HasPrefix(prefix string) bool {
-	return strings.HasSuffix(l.input[l.start:l.pos], prefix)
+	return strings.HasPrefix(l.input[l.start:l.pos], prefix)
 }
 
 func (l *Lexer) Next() (ch rune) {
@@ -95,6 +95,10 @@ func (l *Lexer) Run() {
 func (l *Lexer) AcceptClasses(cl ...AcceptFn) {
 	for {
 		r := l.Next()
+		if r == EOF {
+			break
+		}
+
 		accept := false
 		for _, c := range cl {
 			if c(r) {
@@ -130,7 +134,7 @@ func (l *Lexer) Errorf(format string, args ...interface{}) StateFn {
 	return nil
 }
 
-func AcceptRuneSet(set string) AcceptFn {
+func RuneSet(set string) AcceptFn {
 	return func(r rune) bool {
 		return (strings.IndexRune(set, r) >= 0)
 	}

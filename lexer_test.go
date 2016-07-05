@@ -107,7 +107,7 @@ func Test_Lexer_AcceptUntil(t *testing.T) {
 
 func Test_Lexer_AcceptClasses(t *testing.T) {
 	l := New("meta.apib", `func`)
-	l.AcceptClasses(AcceptRuneSet("f"), AcceptRuneSet("u"))
+	l.AcceptClasses(RuneSet("f"), RuneSet("u"))
 	var pants ItemType = 100
 	go func() {
 		l.Emit(pants)

@@ -3,8 +3,6 @@ package main
 const (
 	ItemError ItemType = iota
 
-	ItemEOF
-
 	ItemMetaKey
 	ItemMetaValue
 
@@ -27,6 +25,7 @@ const (
 	ItemModel
 	ItemPropertyName
 	ItemPropertyType
+	ItemPropertyArrayType
 	ItemPropertyDesc
 
 	// keywords: HTTP methods
@@ -56,14 +55,15 @@ func LexMetaKey(l *Lexer) StateFn {
 		return LexSectionTitle
 	}
 
-	l.AcceptUntil(":\r\n")
-	l.Emit(ItemMetaKey)
+	l.AcceptUntil(":")
+	if l.Peek() == ':' {
+		l.Emit(ItemMetaKey)
+		l.Accept(":")
 
-	if l.Accept(":") {
-		l.Ignore()
 		return LexMetaValue
 	}
 
+	l.Errorf("not valid meta key.")
 	return nil
 }
 
@@ -97,6 +97,10 @@ func LexSectionTitle(l *Lexer) StateFn {
 	// consume to EOL
 	l.AcceptUntil("\r\n")
 
+	if l.Peek() == EOF {
+		return nil
+	}
+
 	switch {
 	case l.HasPrefix("Data Structures"):
 		l.Emit(ItemDataStructures)
@@ -120,9 +124,35 @@ func LexSectionTitle(l *Lexer) StateFn {
 	l.AcceptClasses(Whitespace)
 	l.Ignore()
 
+	r := l.Peek()
+	if r == '#' {
+		return LexSectionTitle
+	}
+
 	return LexOverview
 }
 
+// LexOverview scans the for the Overview body.
+func LexOverview(l *Lexer) StateFn {
+	for {
+		// consume to EOL
+		l.AcceptUntil("\n")
+
+		// consume WS
+		l.AcceptRun("\r\n ")
+
+		// peek if next line is a section title
+		r := l.Peek()
+		if r == '#' || r == EOF {
+			break
+		}
+	}
+	l.Emit(ItemOverview)
+
+	return LexSectionTitle
+}
+
+// LexModel scans for a models name.
 func LexModel(l *Lexer) StateFn {
 	l.AcceptRun("#")
 
@@ -140,25 +170,7 @@ func LexModel(l *Lexer) StateFn {
 	return LexPropertyName
 }
 
-// LexOverview scans the for the Overview body.
-func LexOverview(l *Lexer) StateFn {
-	for {
-		// consume to EOL
-		l.AcceptUntil("\n")
-
-		// consume WS
-		l.AcceptRun("\r\n ")
-
-		// peek if next line is a section title
-		if l.Peek() == '#' {
-			break
-		}
-	}
-	l.Emit(ItemOverview)
-
-	return LexSectionTitle
-}
-
+// LexPropertyName scans for a properties name.
 func LexPropertyName(l *Lexer) StateFn {
 	// consume + and WS
 	l.Accept("+")
@@ -169,10 +181,14 @@ func LexPropertyName(l *Lexer) StateFn {
 	l.AcceptClasses(Letter, Number)
 	r := l.Peek()
 	if !(r == ':' || r == ' ') {
-		l.Errorf("unexpected character 0x%v for property name", r)
+		l.Errorf("unexpected character `%v`:0x%v for property name", string(r), r)
 		return nil
 	}
 	l.Emit(ItemPropertyName)
+
+	if l.Accept(":") {
+		return LexPropertyExample
+	}
 
 	// consume trailing whitespace
 	l.AcceptRun(" \t")
@@ -181,6 +197,14 @@ func LexPropertyName(l *Lexer) StateFn {
 	return LexPropertyType
 }
 
+// LexPropertyExample scans for a property example.
+func LexPropertyExample(l *Lexer) StateFn {
+	l.AcceptUntil("(")
+	l.Ignore()
+	return LexPropertyType
+}
+
+// LexPropertyType scans for a type.
 func LexPropertyType(l *Lexer) StateFn {
 	// consume and ignore (
 	l.Accept("(")
@@ -191,6 +215,17 @@ func LexPropertyType(l *Lexer) StateFn {
 	r := l.Peek()
 	if r == ',' || r == ')' {
 		l.Emit(ItemPropertyType)
+	} else if l.Accept("[") {
+		l.Ignore()
+		l.AcceptClasses(Letter)
+		if l.Peek() == ']' {
+			l.Emit(ItemPropertyArrayType)
+			// consume ]
+			l.Next()
+		} else {
+			l.Errorf("missing closing brace in array type")
+			return nil
+		}
 	} else {
 		l.Errorf("unexpected character 0x%v for property type", l.Peek())
 		return nil
@@ -206,6 +241,8 @@ func LexPropertyType(l *Lexer) StateFn {
 		return LexModel
 	} else if r == '-' {
 		return LexPropertyDesc
+	} else if r == EOF {
+		return nil
 	}
 
 	return LexPropertyName

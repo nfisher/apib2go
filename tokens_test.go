@@ -45,77 +45,234 @@ func Test_rune_classifiers(t *testing.T) {
 	}
 }
 
-func Test_Lex_functions(t *testing.T) {
+func lexItem(doc string, fn StateFn) (item Item, pos int) {
+	l := New("meta.apib", doc)
+	go func() {
+		fn(l)
+	}()
+
+	return <-l.Items, l.Pos()
+}
+
+func Test_LexMetaKey(t *testing.T) {
 	t.Parallel()
 
 	// doc, pos, item, value
 	dataTable := [][]interface{}{
-		{"FORMAT:", 7, ItemMetaKey, "FORMAT", StateFn(LexMetaKey)},                                           //0
-		{"FORMAT 2B:", 10, ItemMetaKey, "FORMAT 2B", StateFn(LexMetaKey)},                                    //1
-		{" 1A9\n\nAUTHOR:", 6, ItemMetaValue, "1A9", StateFn(LexMetaValue)},                                  //2
-		{" nf@jbx\n\n# API", 9, ItemMetaValue, "nf@jbx", StateFn(LexMetaValue)},                              //3
-		{"# Level1\nab", 9, ItemTitleLevel1, "Level1", StateFn(LexSectionTitle)},                             //4
-		{"# Level1\n\na", 10, ItemTitleLevel1, "Level1", StateFn(LexSectionTitle)},                           //5
-		{"## Level2\na", 10, ItemTitleLevel2, "Level2", StateFn(LexSectionTitle)},                            //6
-		{"### Level3\na", 11, ItemTitleLevel3, "Level3", StateFn(LexSectionTitle)},                           //7
-		{"#### Level4\na", 12, ItemTitleLevel4, "Level4", StateFn(LexSectionTitle)},                          //8
-		{"##### Level5\na", 13, ItemTitleLevel5, "Level5", StateFn(LexSectionTitle)},                         //9
-		{"###### Level6\na", 14, ItemTitleLevel6, "Level6", StateFn(LexSectionTitle)},                        //10
-		{"Overview\n#", 9, ItemOverview, "Overview\n", StateFn(LexOverview)},                                 //11
-		{"Overview #\n#", 11, ItemOverview, "Overview #\n", StateFn(LexOverview)},                            //12
-		{"## Data Structures\n\n", 20, ItemDataStructures, "Data Structures", StateFn(LexSectionTitle)},      //13
-		{"### Author\n", 11, ItemModel, "Author", StateFn(LexModel)},                                         //14
-		{"### Author (object)\n", 11, ItemModel, "Author", StateFn(LexModel)},                                //15
-		{"### Author(object)\n", 10, ItemModel, "Author", StateFn(LexModel)},                                 //16
-		{"+ email:", 7, ItemPropertyName, "email", StateFn(LexPropertyName)},                                 //17
-		{"+ email ", 8, ItemPropertyName, "email", StateFn(LexPropertyName)},                                 //18
-		{"+ email* ", 7, ItemError, "unexpected character 0x42 for property name", StateFn(LexPropertyName)}, //19
-		{"(number\n", 7, ItemError, "unexpected character 0x10 for property type", StateFn(LexPropertyType)}, //20
-		{"(number) ", 9, ItemPropertyType, "number", StateFn(LexPropertyType)},                               //21
-		{"(number,required)", 8, ItemPropertyType, "number", StateFn(LexPropertyType)},                       //22
-		{"(number) ", 9, ItemPropertyType, "number", StateFn(LexPropertyType)},                               //23
-		{"(number)\n", 9, ItemPropertyType, "number", StateFn(LexPropertyType)},                              //24
-		{"- desc\n", 7, ItemPropertyDesc, "- desc", StateFn(LexPropertyDesc)},                                //25
-		{"- desc\r\n", 8, ItemPropertyDesc, "- desc", StateFn(LexPropertyDesc)},                              //26
+		{"FORMAT:", 7, ItemMetaKey, "FORMAT"},
+		{"FORMAT\n", 7, ItemError, "not valid meta key."},
+		{"FORMAT 2B:", 10, ItemMetaKey, "FORMAT 2B"},
 	}
 
 	for i, td := range dataTable {
-		l := New("meta.apib", td[0].(string))
-		go func() {
-			fn, ok := td[4].(StateFn)
-			if ok {
-				fn(l)
-			} else {
-				t.Errorf("[%v] can't cast value to StateFn.", i)
-			}
-		}()
-
-		item := <-l.Items
+		item, pos := lexItem(td[0].(string), LexMetaKey)
 
 		expPos := td[1].(int)
-		if expPos != l.Pos() {
-			t.Errorf("[%v] l.Pos() = %v, want %v", i, l.Pos(), expPos)
+		if expPos != pos {
+			t.Errorf("[%v] pos = %v, want %v", i, pos, expPos)
 		}
 
 		expected := Item{td[2].(ItemType), td[3].(string)}
 		if item != expected {
-			t.Errorf("[%v] item.Type = %v, want %v", i, item, expected)
+			t.Errorf("[%v] item = %v, want %v", i, item, expected)
 		}
 	}
 }
 
-func Test_simple_document(t *testing.T) {
+func Test_LexMetaValue(t *testing.T) {
 	t.Parallel()
 
+	// doc, pos, item, value
+	dataTable := [][]interface{}{
+		{" 1A9\n\nAUTHOR:", 6, ItemMetaValue, "1A9"},
+		{" nf@jbx\n\n# API", 9, ItemMetaValue, "nf@jbx"},
+	}
+
+	for i, td := range dataTable {
+		item, pos := lexItem(td[0].(string), LexMetaValue)
+
+		expPos := td[1].(int)
+		if expPos != pos {
+			t.Errorf("[%v] pos = %v, want %v", i, pos, expPos)
+		}
+
+		expected := Item{td[2].(ItemType), td[3].(string)}
+		if item != expected {
+			t.Errorf("[%v] item = %v, want %v", i, item, expected)
+		}
+	}
+}
+
+func Test_LexSectionTitle(t *testing.T) {
+	t.Parallel()
+
+	// doc, pos, item, value
+	dataTable := [][]interface{}{
+		{"# Level1\nab", 9, ItemTitleLevel1, "Level1"},
+		{"# Level1\n\na", 10, ItemTitleLevel1, "Level1"},
+		{"## Level2\na", 10, ItemTitleLevel2, "Level2"},
+		{"### Level3\na", 11, ItemTitleLevel3, "Level3"},
+		{"#### Level4\na", 12, ItemTitleLevel4, "Level4"},
+		{"##### Level5\na", 13, ItemTitleLevel5, "Level5"},
+		{"###### Level6\na", 14, ItemTitleLevel6, "Level6"},
+		{"## Data Structures\n\n", 20, ItemDataStructures, "Data Structures"},
+	}
+
+	for i, td := range dataTable {
+		item, pos := lexItem(td[0].(string), LexSectionTitle)
+
+		expPos := td[1].(int)
+		if expPos != pos {
+			t.Errorf("[%v] pos = %v, want %v", i, pos, expPos)
+		}
+
+		expected := Item{td[2].(ItemType), td[3].(string)}
+		if item != expected {
+			t.Errorf("[%v] item = %v, want %v", i, item, expected)
+		}
+	}
+}
+
+func Test_LexOverview(t *testing.T) {
+	t.Parallel()
+
+	// doc, pos, item, value
+	dataTable := [][]interface{}{
+		{"Overview\n#", 9, ItemOverview, "Overview\n"},
+		{"Overview #\n#", 11, ItemOverview, "Overview #\n"},
+		{"Overview", 8, ItemOverview, "Overview"},
+	}
+
+	for i, td := range dataTable {
+		item, pos := lexItem(td[0].(string), LexOverview)
+
+		expPos := td[1].(int)
+		if expPos != pos {
+			t.Errorf("[%v] pos = %v, want %v", i, pos, expPos)
+		}
+
+		expected := Item{td[2].(ItemType), td[3].(string)}
+		if item != expected {
+			t.Errorf("[%v] item = %v, want %v", i, item, expected)
+		}
+	}
+
+}
+
+func Test_LexModel(t *testing.T) {
+	t.Parallel()
+
+	// doc, pos, item, value
+	dataTable := [][]interface{}{
+		{"### Author\n", 11, ItemModel, "Author"},
+		{"### Author (object)\n", 11, ItemModel, "Author"},
+		{"### Author(object)\n", 10, ItemModel, "Author"},
+	}
+
+	for i, td := range dataTable {
+		item, pos := lexItem(td[0].(string), LexModel)
+
+		expPos := td[1].(int)
+		if expPos != pos {
+			t.Errorf("[%v] pos = %v, want %v", i, pos, expPos)
+		}
+
+		expected := Item{td[2].(ItemType), td[3].(string)}
+		if item != expected {
+			t.Errorf("[%v] item = %v, want %v", i, item, expected)
+		}
+	}
+}
+
+func Test_LexPropertyName(t *testing.T) {
+	t.Parallel()
+
+	// doc, pos, item, value
+	dataTable := [][]interface{}{
+		{"+ email:", 8, ItemPropertyName, "email"},
+		{"+ email ", 8, ItemPropertyName, "email"},
+		{"+ email* ", 7, ItemError, "unexpected character `*`:0x42 for property name"},
+	}
+
+	for i, td := range dataTable {
+		item, pos := lexItem(td[0].(string), LexPropertyName)
+
+		expPos := td[1].(int)
+		if expPos != pos {
+			t.Errorf("[%v] pos = %v, want %v", i, pos, expPos)
+		}
+
+		expected := Item{td[2].(ItemType), td[3].(string)}
+		if item != expected {
+			t.Errorf("[%v] item = %v,\nwant %v", i, item, expected)
+		}
+	}
+}
+
+func Test_LexPropertyType(t *testing.T) {
+	t.Parallel()
+
+	// doc, pos, item, value
+	dataTable := [][]interface{}{
+		{"(number\n", 7, ItemError, "unexpected character 0x10 for property type"},
+		{"(number) ", 9, ItemPropertyType, "number"},
+		{"(number,required)", 8, ItemPropertyType, "number"},
+		{"(number) ", 9, ItemPropertyType, "number"},
+		{"(number)\n", 9, ItemPropertyType, "number"},
+		{"(array[number])\n", 16, ItemPropertyArrayType, "number"},
+		{"(array[number)\n", 13, ItemError, "missing closing brace in array type"},
+		{"(arraynumber])\n", 12, ItemError, "unexpected character 0x93 for property type"},
+	}
+
+	for i, td := range dataTable {
+		item, pos := lexItem(td[0].(string), LexPropertyType)
+
+		expPos := td[1].(int)
+		if expPos != pos {
+			t.Errorf("[%v] pos = %v, want %v for %v", i, pos, expPos, item)
+		}
+
+		expected := Item{td[2].(ItemType), td[3].(string)}
+		if item != expected {
+			t.Errorf("[%v] item = %v, want %v", i, item, expected)
+		}
+	}
+}
+
+func Test_LexPropertyDesc(t *testing.T) {
+	t.Parallel()
+
+	// doc, pos, item, value
+	dataTable := [][]interface{}{
+		{"- desc\n", 7, ItemPropertyDesc, "- desc"},
+		{"- desc\r\n", 8, ItemPropertyDesc, "- desc"},
+	}
+
+	for i, td := range dataTable {
+		item, pos := lexItem(td[0].(string), LexPropertyDesc)
+
+		expPos := td[1].(int)
+		if expPos != pos {
+			t.Errorf("[%v] pos = %v, want %v", i, pos, expPos)
+		}
+
+		expected := Item{td[2].(ItemType), td[3].(string)}
+		if item != expected {
+			t.Errorf("[%v] item = %v, want %v", i, item, expected)
+		}
+	}
+}
+
+func Test_datastructure_apib_document(t *testing.T) {
+	t.Parallel()
 	var doc = `Version: 1A9
 
-# Simple API
-Overview
+# DS API
 
 ## Data Structures
 
 ### Dimension
-+ radius (number)
++ radius: 123 (number)
 + length (number)
 
 ### Produce
@@ -133,8 +290,7 @@ Overview
 	expected := []Item{
 		Item{ItemMetaKey, "Version"},
 		Item{ItemMetaValue, "1A9"},
-		Item{ItemTitleLevel1, "Simple API"},
-		Item{ItemOverview, "Overview\n\n"},
+		Item{ItemTitleLevel1, "DS API"},
 		Item{ItemDataStructures, "Data Structures"},
 		Item{ItemModel, "Dimension"},
 		Item{ItemPropertyName, "radius"},
@@ -150,6 +306,65 @@ Overview
 		Item{ItemPropertyName, "fruit"},
 		Item{ItemPropertyType, "boolean"},
 		Item{ItemPropertyDesc, "- Is it fruit?"},
+	}
+
+	for i, ex := range expected {
+		item := <-l.Items
+		if item != ex {
+			t.Errorf("[%v] item = %v, want %v: %s", i, item, ex, string(l.Peek()))
+		}
+	}
+}
+
+func Test_simple_api_document(t *testing.T) {
+	t.Parallel()
+
+	var doc = `Version: 1A9
+
+# Simple API
+Overview
+
+# Group Health Check
+
+## Ping [/ping]
+
+### Ping-Pong [GET]
+
++ Request pong
+
+    + Headers
+
+            Accept: text/plain
+
++ Response 200 (text/plain; charset=utf-8)
+
+        pong`
+
+	req := `+ Request pong
+
+    + Headers
+
+            Accept: text/plain
+
++ Response 200 (text/plain; charset=utf-8)
+
+        pong`
+
+	l := New("meta.apib", doc)
+
+	go func() {
+		l.Run()
+	}()
+
+	expected := []Item{
+		Item{ItemMetaKey, "Version"},
+		Item{ItemMetaValue, "1A9"},
+		Item{ItemTitleLevel1, "Simple API"},
+		Item{ItemOverview, "Overview\n\n"},
+		Item{ItemTitleLevel1, "Group Health Check"},
+		Item{ItemTitleLevel2, "Ping [/ping]"},
+		Item{ItemTitleLevel3, "Ping-Pong [GET]"},
+		Item{ItemOverview, req},
 	}
 
 	for i, ex := range expected {
