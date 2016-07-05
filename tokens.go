@@ -16,10 +16,6 @@ const (
 	ItemTitleLevel5
 	ItemTitleLevel6
 
-	ItemGroup
-	ItemRequired
-	ItemURI
-
 	// Data structures section
 	ItemDataStructures // Section Title
 	ItemModel
@@ -27,26 +23,6 @@ const (
 	ItemPropertyType
 	ItemPropertyArrayType
 	ItemPropertyDesc
-
-	// keywords: HTTP methods
-	ItemCONNECT
-	ItemDEL
-	ItemGET
-	ItemHEAD
-	ItemOPTIONS
-	ItemPOST
-	ItemPUT
-	ItemTRACE
-
-	// keywords: list
-	ItemAttributes
-	ItemBody
-	ItemParameters
-	ItemRelation
-	ItemRequest
-	ItemResponse
-	ItemSchema
-	ItemValues
 )
 
 // LexMetaKey scans the Meta Section for the key in a key-value pair.
@@ -246,12 +222,6 @@ func LexPropertyType(l *Lexer) StateFn {
 	}
 
 	return LexPropertyName
-}
-
-func LexPropertyRequired(l *Lexer) StateFn {
-	l.Accept(", ")
-	l.Ignore()
-	return nil
 }
 
 func LexPropertyDesc(l *Lexer) StateFn {
