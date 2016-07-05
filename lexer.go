@@ -85,6 +85,31 @@ func (l *Lexer) AcceptRun(valid string) {
 	l.backup()
 }
 
+func (l *Lexer) Run() {
+	for fn := LexMetaKey; fn != nil; {
+		fn = fn(l)
+	}
+	close(l.Items)
+}
+
+func (l *Lexer) AcceptClasses(cl ...AcceptFn) {
+	for {
+		r := l.Next()
+		accept := false
+		for _, c := range cl {
+			if c(r) {
+				accept = true
+				break
+			}
+		}
+
+		if !accept {
+			break
+		}
+	}
+	l.backup()
+}
+
 func (l *Lexer) AcceptUntil(stop string) {
 	for {
 		r := l.Next()
@@ -105,4 +130,11 @@ func (l *Lexer) Errorf(format string, args ...interface{}) StateFn {
 	return nil
 }
 
+func AcceptRuneSet(set string) AcceptFn {
+	return func(r rune) bool {
+		return (strings.IndexRune(set, r) >= 0)
+	}
+}
+
 type StateFn func(*Lexer) StateFn
+type AcceptFn func(rune) bool

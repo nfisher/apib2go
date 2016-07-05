@@ -1,7 +1,13 @@
 package main
 
-import "fmt"
+import (
+	"flag"
+	"fmt"
+)
 
 func main() {
-	fmt.Println("apib2go")
+	var filename string
+	flag.StringVar(&filename, "input", "", "Input filename.")
+	flag.Parse()
+	fmt.Println(filename)
 }

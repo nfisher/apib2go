@@ -8,16 +8,26 @@ const (
 	ItemMetaKey
 	ItemMetaValue
 
-	ItemApiName
 	ItemOverview
 
 	// keywords: headers
-	ItemSectionTitle
-	ItemDataStructures
+	ItemTitleLevel1
+	ItemTitleLevel2
+	ItemTitleLevel3
+	ItemTitleLevel4
+	ItemTitleLevel5
+	ItemTitleLevel6
+
 	ItemGroup
 	ItemRequired
 	ItemURI
-	ItemStructureName
+
+	// Data structures section
+	ItemDataStructures // Section Title
+	ItemModel
+	ItemPropertyName
+	ItemPropertyType
+	ItemPropertyDesc
 
 	// keywords: HTTP methods
 	ItemCONNECT
@@ -32,8 +42,6 @@ const (
 	// keywords: list
 	ItemAttributes
 	ItemBody
-	ItemHeaders
-	ItemModel
 	ItemParameters
 	ItemRelation
 	ItemRequest
@@ -45,13 +53,14 @@ const (
 // LexMetaKey scans the Meta Section for the key in a key-value pair.
 func LexMetaKey(l *Lexer) StateFn {
 	if l.Peek() == '#' {
-		return LexApiName
+		return LexSectionTitle
 	}
 
 	l.AcceptUntil(":\r\n")
 	l.Emit(ItemMetaKey)
 
 	if l.Accept(":") {
+		l.Ignore()
 		return LexMetaValue
 	}
 
@@ -75,31 +84,11 @@ func LexMetaValue(l *Lexer) StateFn {
 	return LexMetaKey
 }
 
-// LexApiName
-func LexApiName(l *Lexer) StateFn {
+// LexSectionTitle lexes the section title.
+func LexSectionTitle(l *Lexer) StateFn {
 	start := l.Pos()
 	l.AcceptRun("#")
 	diff := l.Pos() - start
-
-	// check number of hashes is what we want
-	if diff != 1 {
-		return l.Errorf("API name should have 1 hash but was %v.", diff)
-	}
-
-	// consume WS
-	l.AcceptRun(" ")
-	l.Ignore()
-
-	// consume to EOL
-	l.AcceptUntil("\r\n")
-	l.Emit(ItemApiName)
-
-	return LexOverview
-}
-
-// LexSectionTitle lexes the section title.
-func LexSectionTitle(l *Lexer) StateFn {
-	l.AcceptRun("#")
 
 	// consume WS
 	l.AcceptRun(" ")
@@ -111,14 +100,30 @@ func LexSectionTitle(l *Lexer) StateFn {
 	switch {
 	case l.HasPrefix("Data Structures"):
 		l.Emit(ItemDataStructures)
-		return nil
+		l.AcceptClasses(Whitespace)
+		l.Ignore()
+		return LexModel
 	}
 
-	l.Emit(ItemSectionTitle)
-	return nil
+	titles := []ItemType{
+		ItemTitleLevel1,
+		ItemTitleLevel2,
+		ItemTitleLevel3,
+		ItemTitleLevel4,
+		ItemTitleLevel5,
+		ItemTitleLevel6,
+	}
+	d := titles[diff-1]
+
+	l.Emit(d)
+
+	l.AcceptClasses(Whitespace)
+	l.Ignore()
+
+	return LexOverview
 }
 
-func LexDataStructure(l *Lexer) StateFn {
+func LexModel(l *Lexer) StateFn {
 	l.AcceptRun("#")
 
 	// consume WS
@@ -128,8 +133,11 @@ func LexDataStructure(l *Lexer) StateFn {
 	// consume to EOL, WS or right-parenthesis.
 	l.AcceptUntil("\r\n (")
 
-	l.Emit(ItemStructureName)
-	return nil
+	l.Emit(ItemModel)
+	l.AcceptClasses(Whitespace)
+	l.Ignore()
+
+	return LexPropertyName
 }
 
 // LexOverview scans the for the Overview body.
@@ -151,6 +159,74 @@ func LexOverview(l *Lexer) StateFn {
 	return LexSectionTitle
 }
 
+func LexPropertyName(l *Lexer) StateFn {
+	// consume + and WS
+	l.Accept("+")
+	l.AcceptRun("\t ")
+	l.Ignore()
+
+	// capture everything until WS or :
+	l.AcceptClasses(Letter, Number)
+	r := l.Peek()
+	if !(r == ':' || r == ' ') {
+		l.Errorf("unexpected character 0x%v for property name", r)
+		return nil
+	}
+	l.Emit(ItemPropertyName)
+
+	// consume trailing whitespace
+	l.AcceptRun(" \t")
+	l.Ignore()
+
+	return LexPropertyType
+}
+
+func LexPropertyType(l *Lexer) StateFn {
+	// consume and ignore (
+	l.Accept("(")
+	l.Ignore()
+
+	// capture letters
+	l.AcceptClasses(Letter)
+	r := l.Peek()
+	if r == ',' || r == ')' {
+		l.Emit(ItemPropertyType)
+	} else {
+		l.Errorf("unexpected character 0x%v for property type", l.Peek())
+		return nil
+	}
+
+	// consume boundary and ignore WS
+	l.Accept(",)")
+	l.AcceptClasses(Whitespace)
+	l.Ignore()
+
+	r = l.Peek()
+	if r == '#' {
+		return LexModel
+	} else if r == '-' {
+		return LexPropertyDesc
+	}
+
+	return LexPropertyName
+}
+
+func LexPropertyRequired(l *Lexer) StateFn {
+	l.Accept(", ")
+	l.Ignore()
+	return nil
+}
+
+func LexPropertyDesc(l *Lexer) StateFn {
+	l.AcceptUntil("\r\n")
+
+	l.Emit(ItemPropertyDesc)
+	l.AcceptClasses(Whitespace)
+	l.Ignore()
+
+	return LexPropertyName
+}
+
 func Whitespace(ch rune) bool {
 	if ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' {
 		return true
@@ -161,6 +237,14 @@ func Whitespace(ch rune) bool {
 
 func Letter(ch rune) bool {
 	if ch >= 'A' && ch <= 'Z' || ch >= 'a' && ch <= 'z' {
+		return true
+	}
+
+	return false
+}
+
+func Number(ch rune) bool {
+	if ch >= '0' && ch <= '9' {
 		return true
 	}
 

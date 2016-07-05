@@ -105,6 +105,25 @@ func Test_Lexer_AcceptUntil(t *testing.T) {
 	}
 }
 
+func Test_Lexer_AcceptClasses(t *testing.T) {
+	l := New("meta.apib", `func`)
+	l.AcceptClasses(AcceptRuneSet("f"), AcceptRuneSet("u"))
+	var pants ItemType = 100
+	go func() {
+		l.Emit(pants)
+	}()
+
+	item := <-l.Items
+	expVal := "fu"
+	if item.Value != expVal {
+		t.Errorf("got item.Value = %v, want %v", item.Value, expVal)
+	}
+
+	if item.Type != pants {
+		t.Errorf("got item.Type = %v, want %v", item.Type, pants)
+	}
+}
+
 func Test_Lexer_Emit(t *testing.T) {
 	l := New("meta.apib", `func stuff()`)
 	l.AcceptRun("func")
