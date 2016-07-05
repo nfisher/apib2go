@@ -8,8 +8,7 @@
 - Optional is represented by pointer.
 - Required is represented by an instance. \*
 - Numbers are represented as strings to avoid issues with precision.
-- ${X}.apib becomes the package name (e.g. products.apib generates products/generated.go with a package name "products").
-- functions such as builders and other tooling can co-exist with the generated code as long as the user does not place it in the generated.go files.
+- functions such as builders and other tooling can co-exist with the generated code as long as the user does not place it in the generated source code files.
 
 \* I'm not really a fan of required fields. It limits schema evolution (protobuf3 dropped it entirely) so it'll be the last thing I focus on.
 
