@@ -25,9 +25,11 @@
 
 ## Example
 
-APIB
-
+fruits.apib
 ```
+# Fruit API
+Fruit distribution API.
+
 ## Data Structures
 
 ### Dimension
@@ -41,8 +43,16 @@ APIB
 + fruit (boolean) - Is it fruit?
 ```
 
+Execution
+```
+apib2go -input fruit.apib -package fruit
+```
+
+
 Go
 ```
+package fruit
+
 import (
   "github.com/nfisher/apib2go/apib"
   . "github.com/nfisher/apib2go/primitives"
