@@ -37,15 +37,16 @@ func main() {
 		l.Run()
 	}()
 
-	gw := &GoWriter{
+	w := &GoWriter{
 		os.Stdout,
 		false,
 		pkgname,
+		"",
 	}
-	defer gw.Close()
+	defer w.Close()
 
 	for item := range l.Items {
 		// this is dirty should compose Items into AST nodes.
-		gw.Append(item)
+		w.Append(item)
 	}
 }

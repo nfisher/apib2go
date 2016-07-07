@@ -8,8 +8,9 @@ import (
 
 type GoWriter struct {
 	io.Writer
-	open bool
-	name string
+	open     bool
+	name     string
+	lastname string
 }
 
 type b []byte
@@ -34,14 +35,23 @@ func (gw *GoWriter) Append(item Item) {
 
 	case ItemPropertyName:
 		gw.Write(bs("  %v", strings.Title(item.Value)))
+		gw.lastname = item.Value
 		return
 
 	case ItemPropertyType:
-		gw.Write(bs(" %v `json:\",omitempty\"`\n", strings.Title(item.Value)))
+		f := " *%v `json:\"%v,omitempty\"`\n"
+		if strings.Contains("string boolean number ", item.Value+" ") {
+			f = " %v `json:\"%v,omitempty\"`\n"
+		}
+		gw.Write(bs(f, strings.Title(item.Value), gw.lastname))
 		return
 
 	case ItemPropertyArrayType:
-		gw.Write(bs(" []%v `json:\",omitempty\"`\n", strings.Title(item.Value)))
+		f := " []*%v `json:\"%v,omitempty\"`\n"
+		if strings.Contains("string boolean number ", item.Value+" ") {
+			f = " []%v `json:\"%v,omitempty\"`\n"
+		}
+		gw.Write(bs(f, strings.Title(item.Value), gw.lastname))
 		return
 
 	case ItemError:
