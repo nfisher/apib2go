@@ -23,6 +23,10 @@ $(COVER): $(SRC)
 cov: $(COVER)
 	go tool cover -html=$(COVER)
 
+.PHONY: install
+install: $(COVER)
+	go install -v
+
 # Clean up the project files.
 .PHONY: clean
 clean:
