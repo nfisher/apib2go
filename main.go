@@ -7,6 +7,35 @@ import (
 	"os"
 )
 
+type Property struct {
+	Description string
+	Name        string
+	Type        string
+	IsArray     bool
+}
+
+type DataStructure struct {
+	Name       string
+	Properties []*Property
+}
+
+type MetaData struct {
+	Key   string
+	Value string
+}
+
+type Document struct {
+	MetaData       []*MetaData
+	DataStructures []*DataStructure
+}
+
+func NewDoc() *Document {
+	return &Document{
+		MetaData:       make([]*MetaData, 0, 10),
+		DataStructures: make([]*DataStructure, 0, 10),
+	}
+}
+
 func main() {
 	var filename string
 	var pkgname string
@@ -37,16 +66,57 @@ func main() {
 		l.Run()
 	}()
 
-	w := &GoWriter{
-		os.Stdout,
-		false,
-		pkgname,
-		"",
-	}
-	defer w.Close()
+	doc := NewDoc()
+
+	var md *MetaData
+	var model *DataStructure
+	var prop *Property
 
 	for item := range l.Items {
-		// this is dirty should compose Items into AST nodes.
-		w.Append(item)
+		switch item.Type {
+		case ItemError:
+			fmt.Printf("%v\n", item.Value)
+			os.Exit(1)
+
+		case ItemMetaKey:
+			md = &MetaData{}
+			md.Key = item.Value
+			continue
+
+		case ItemMetaValue:
+			md.Value = item.Value
+			doc.MetaData = append(doc.MetaData, md)
+			md = nil
+			continue
+
+		case ItemModel:
+			model = &DataStructure{}
+			doc.DataStructures = append(doc.DataStructures, model)
+			model.Name = item.Value
+			continue
+
+		case ItemPropertyName:
+			prop = &Property{}
+			model.Properties = append(model.Properties, prop)
+			prop.Name = item.Value
+			continue
+
+		case ItemPropertyType:
+			prop.Type = item.Value
+			prop.IsArray = false
+			continue
+
+		case ItemPropertyArrayType:
+			prop.Type = item.Value
+			prop.IsArray = true
+			continue
+		}
 	}
+
+	w := &GoWriter{
+		os.Stdout,
+		pkgname,
+	}
+
+	w.WriteDoc(doc)
 }

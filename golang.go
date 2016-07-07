@@ -8,9 +8,7 @@ import (
 
 type GoWriter struct {
 	io.Writer
-	open     bool
-	name     string
-	lastname string
+	pkgname string
 }
 
 type b []byte
@@ -20,48 +18,23 @@ func bs(format string, args ...interface{}) []byte {
 	return b(s)
 }
 
-func (gw *GoWriter) Append(item Item) {
-	switch item.Type {
-	case ItemModel:
-		if gw.open {
-			gw.Write(bs("}\n\n"))
-		} else {
-			gw.Write(bs("package %v\n\n", gw.name))
-			gw.Write(bs("import . \"github.com/nfisher/apib2go/primitives\"\n\n"))
+func (w *GoWriter) WriteDoc(doc *Document) {
+	w.Write(bs("package %v\n\n", w.pkgname))
+	w.Write(bs("import . \"github.com/nfisher/apib2go/primitives\"\n\n"))
+
+	for _, model := range doc.DataStructures {
+		w.Write(bs("type %s struct {\n", model.Name))
+		for _, property := range model.Properties {
+			pre := "*"
+			if strings.Contains("string number boolean ", property.Type) {
+				pre = ""
+			}
+			f := "  %v %v%v `json:\"%v,omitempty\"`\n"
+			if property.IsArray {
+				f = "  %v []%v%v `json:\"%v,omitempty\"`\n"
+			}
+			w.Write(bs(f, strings.Title(property.Name), pre, strings.Title(property.Type), property.Name))
 		}
-		gw.Write(bs("type %s struct {\n", item.Value))
-		gw.open = true
-		return
-
-	case ItemPropertyName:
-		gw.Write(bs("  %v", strings.Title(item.Value)))
-		gw.lastname = item.Value
-		return
-
-	case ItemPropertyType:
-		f := " *%v `json:\"%v,omitempty\"`\n"
-		if strings.Contains("string boolean number ", item.Value+" ") {
-			f = " %v `json:\"%v,omitempty\"`\n"
-		}
-		gw.Write(bs(f, strings.Title(item.Value), gw.lastname))
-		return
-
-	case ItemPropertyArrayType:
-		f := " []*%v `json:\"%v,omitempty\"`\n"
-		if strings.Contains("string boolean number ", item.Value+" ") {
-			f = " []%v `json:\"%v,omitempty\"`\n"
-		}
-		gw.Write(bs(f, strings.Title(item.Value), gw.lastname))
-		return
-
-	case ItemError:
-		fmt.Printf("%s\n", item.Value)
-		return
-	}
-}
-
-func (gw *GoWriter) Close() {
-	if gw.open {
-		gw.Write(bs("}\n"))
+		w.Write(bs("}\n\n"))
 	}
 }
