@@ -43,6 +43,10 @@ func (gw *GoWriter) Append(item Item) {
 	case ItemPropertyArrayType:
 		gw.Write(bs(" []%v `json:\",omitempty\"`\n", strings.Title(item.Value)))
 		return
+
+	case ItemError:
+		fmt.Printf("%s\n", item.Value)
+		return
 	}
 }
 

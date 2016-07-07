@@ -273,7 +273,7 @@ func Test_datastructure_apib_document(t *testing.T) {
 
 ### Dimension
 + radius: 123 (number)
-+ length (number)
++ length (number) - This is a comment.
 
 ### Produce
 
@@ -297,6 +297,7 @@ func Test_datastructure_apib_document(t *testing.T) {
 		Item{ItemPropertyType, "number"},
 		Item{ItemPropertyName, "length"},
 		Item{ItemPropertyType, "number"},
+		Item{ItemPropertyDesc, "- This is a comment."},
 		Item{ItemModel, "Produce"},
 		Item{ItemPropertyName, "colour"},
 		Item{ItemPropertyType, "string"},

@@ -231,7 +231,12 @@ func LexPropertyDesc(l *Lexer) StateFn {
 	l.AcceptClasses(Whitespace)
 	l.Ignore()
 
-	return LexPropertyName
+	r := l.Peek()
+	if r == '#' {
+		return LexModel
+	} else {
+		return LexPropertyName
+	}
 }
 
 func Whitespace(ch rune) bool {
